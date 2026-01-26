@@ -1,0 +1,22 @@
+diff --git a/lib/livekit-meet-infrastructure-stack.ts b/lib/livekit-meet-infrastructure-stack.ts
+index cedae5a..224da7d 100644
+--- a/lib/livekit-meet-infrastructure-stack.ts
++++ b/lib/livekit-meet-infrastructure-stack.ts
+@@ -47,7 +47,7 @@ export class LivekitMeetInfrastructureStack extends cdk.Stack {
+     // Stage 1: VPC and Networking Foundation
+     const vpc = new ec2.Vpc(this, "LivekitVpc", {
+       maxAzs: 2,
+-      natGateways: 1,
++      natGateways: 0,
+       subnetConfiguration: [
+         {
+           cidrMask: 24,
+@@ -525,7 +525,7 @@ sudo docker compose up -d
+     const fargateService = new ecs.FargateService(this, "TokenServerService", {
+       cluster,
+       taskDefinition,
+-      desiredCount: 1,
++      desiredCount: 0,
+       securityGroups: [fargateSecurityGroup],
+       vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS },
+       capacityProviderStrategies: [

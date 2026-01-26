@@ -1,0 +1,14 @@
+api_key: devkey
+api_secret: secret
+ws_url: ws://livekit:7880
+health_port: 9090
+log_level: info
+
+# S3 configuration for recording uploads
+s3:
+  access_key: test
+  secret: test
+  region: us-east-1
+  endpoint: http://localstack:4566
+  bucket: livekit-recordings
+  force_path_style: true

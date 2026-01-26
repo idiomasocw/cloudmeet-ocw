@@ -1,0 +1,205 @@
+version: "3.8"
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: livekit-postgres
+    environment:
+      POSTGRES_DB: livekit_conference
+      POSTGRES_USER: ${POSTGRES_USER:-livekit}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme_local_dev_only}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./livekit-backend-api/migrations:/migrations
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-livekit} -d livekit_conference",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - livekit-network
+    restart: unless-stopped
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: livekit-redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - livekit-network
+    restart: unless-stopped
+
+  # LocalStack for S3-compatible storage
+  localstack:
+    image: localstack/localstack:latest
+    container_name: livekit-localstack
+    environment:
+      SERVICES: s3
+      PERSISTENCE: 1
+    volumes:
+      - localstack-data:/var/lib/localstack
+      - ./localstack-init.sh:/etc/localstack/init/ready.d/init.sh
+    ports:
+      - "4566:4566"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - livekit-network
+    restart: unless-stopped
+
+  # LiveKit Server
+  livekit:
+    image: livekit/livekit-server:latest
+    container_name: livekit-server
+    command: --config /etc/livekit.yaml --node-ip ${LIVEKIT_NODE_IP:-127.0.0.1}
+    volumes:
+      - ./livekit.yaml:/etc/livekit.yaml
+    ports:
+      - "7880:7880"
+      - "7881:7881"
+      - "50000-50100:50000-50100/udp"
+    environment:
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET}
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:7880"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - livekit-network
+    restart: unless-stopped
+
+  # LiveKit Egress for recording
+  egress:
+    image: livekit/egress:latest
+    container_name: livekit-egress
+    environment:
+      EGRESS_CONFIG_FILE: /etc/egress.yaml
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET}
+      LIVEKIT_URL: ${LIVEKIT_URL:-ws://livekit:7880}
+      S3_ENDPOINT: ${S3_ENDPOINT:-http://localstack:4566}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-test}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-test}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_BUCKET: ${S3_BUCKET:-livekit-recordings}
+    volumes:
+      - ./egress.yaml:/etc/egress.yaml
+    depends_on:
+      livekit:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
+    cap_add:
+      - SYS_ADMIN
+    networks:
+      - livekit-network
+    restart: unless-stopped
+
+  # Backend API
+  backend:
+    build:
+      context: ./livekit-backend-api
+      dockerfile: Dockerfile
+    container_name: livekit-backend
+    ports:
+      - "3001:3001"
+    environment:
+      PORT: 3001
+      NODE_ENV: ${NODE_ENV:-development}
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET}
+      LIVEKIT_URL: ${LIVEKIT_URL:-ws://livekit:7880}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-livekit}:${POSTGRES_PASSWORD:-changeme_local_dev_only}@postgres:5432/livekit_conference
+      REDIS_URL: redis://redis:6379
+      S3_ENDPOINT: ${S3_ENDPOINT:-http://localstack:4566}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-test}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-test}
+      S3_BUCKET: ${S3_BUCKET:-livekit-recordings}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_FORCE_PATH_STYLE: ${S3_FORCE_PATH_STYLE:-true}
+      AWS_REGION: ${S3_REGION:-us-east-1}
+    volumes:
+      - ./livekit-backend-api/src:/app/src
+      - ./livekit-backend-api/migrations:/app/migrations
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      livekit:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - livekit-network
+    restart: unless-stopped
+
+  # Frontend
+  frontend:
+    build:
+      context: ./livekit-meet-frontend
+      dockerfile: Dockerfile.dev
+      target: development
+    container_name: livekit-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_BACKEND_URL: ${NEXT_PUBLIC_BACKEND_URL:-http://localhost:3001}
+      NEXT_PUBLIC_LIVEKIT_URL: ${NEXT_PUBLIC_LIVEKIT_URL:-ws://localhost:7880}
+    volumes:
+      - ./livekit-meet-frontend/app:/app/app
+      - ./livekit-meet-frontend/lib:/app/lib
+      - ./livekit-meet-frontend/styles:/app/styles
+      - ./livekit-meet-frontend/public:/app/public
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - livekit-network
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+    name: livekit-postgres-data
+  redis-data:
+    name: livekit-redis-data
+  localstack-data:
+    name: livekit-localstack-data
+
+networks:
+  livekit-network:
+    name: livekit-network
+    driver: bridge

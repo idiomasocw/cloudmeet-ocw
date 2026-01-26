@@ -1,0 +1,58 @@
+diff --git a/src/routes/connectionDetails.ts b/src/routes/connectionDetails.ts
+index 13e47ff..da9309f 100644
+--- a/src/routes/connectionDetails.ts
++++ b/src/routes/connectionDetails.ts
+@@ -16,9 +16,9 @@ export function createConnectionDetailsHandler(livekitService: LiveKitService) {
+     }
+ 
+     try {
+-      // Handle region-specific URL
++      // Handle region-specific URL - convert https to wss for client connections
+       const baseUrl = process.env.LIVEKIT_URL || '';
+-      const livekitServerUrl = region ? getLiveKitURL(baseUrl, region as string) : baseUrl;
++      const livekitServerUrl = (region ? getLiveKitURL(baseUrl, region as string) : baseUrl).replace('https://', 'wss://');
+       
+       // Handle participant postfix from cookies
+       let randomParticipantPostfix = req.cookies?.[COOKIE_KEY];
+diff --git a/src/services/livekitService.ts b/src/services/livekitService.ts
+index 8531f2d..354b6e1 100644
+--- a/src/services/livekitService.ts
++++ b/src/services/livekitService.ts
+@@ -40,7 +40,25 @@ export class LiveKitService {
+   }
+ 
+   async startRecording(roomName: string, s3Bucket: string, awsRegion: string) {
+-    const egressClient = new EgressClient(this.config.wsUrl, this.config.apiKey, this.config.apiSecret);
++    const httpUrl = this.config.wsUrl.replace('wss://', 'https://').replace('ws://', 'http://');
++    console.log('EgressClient URL conversion:', { original: this.config.wsUrl, converted: httpUrl });
++    
++    // Test network connectivity first
++    try {
++      const testUrl = new URL(httpUrl);
++      console.log('Testing connectivity to:', testUrl.hostname, 'port:', testUrl.port || '443');
++      const response = await fetch(`${httpUrl}/twirp/livekit.Egress/ListEgress`, {
++        method: 'POST',
++        headers: { 'Content-Type': 'application/json' },
++        body: JSON.stringify({}),
++        signal: AbortSignal.timeout(5000)
++      });
++      console.log('Connectivity test response:', response.status, response.statusText);
++    } catch (error) {
++      console.error('Connectivity test failed:', error instanceof Error ? error.message : String(error));
++    }
++    
++    const egressClient = new EgressClient(httpUrl, this.config.apiKey, this.config.apiSecret);
+     
+     const fileOutput = new EncodedFileOutput({
+       filepath: `recordings/${roomName}/${Date.now()}.mp4`,
+@@ -63,7 +81,8 @@ export class LiveKitService {
+   }
+ 
+   async stopRecording(egressId: string) {
+-    const egressClient = new EgressClient(this.config.wsUrl, this.config.apiKey, this.config.apiSecret);
++    const httpUrl = this.config.wsUrl.replace('wss://', 'https://').replace('ws://', 'http://');
++    const egressClient = new EgressClient(httpUrl, this.config.apiKey, this.config.apiSecret);
+     return await egressClient.stopEgress(egressId);
+   }
+ }
+\ No newline at end of file
