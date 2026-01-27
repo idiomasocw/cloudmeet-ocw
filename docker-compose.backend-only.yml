@@ -1,3 +1,5 @@
+version: "3.8"
+
 services:
   # PostgreSQL Database
   postgres:
@@ -71,7 +73,7 @@ services:
   livekit:
     image: livekit/livekit-server:latest
     container_name: livekit-server
-    command: --config /etc/livekit.yaml --node-ip livekit
+    command: --config /etc/livekit.yaml --node-ip ${LIVEKIT_NODE_IP:-127.0.0.1}
     volumes:
       - ./livekit.yaml:/etc/livekit.yaml
     ports:
@@ -132,7 +134,6 @@ services:
       LIVEKIT_API_KEY: ${LIVEKIT_API_KEY}
       LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET}
       LIVEKIT_URL: ${LIVEKIT_URL:-ws://livekit:7880}
-      LIVEKIT_PUBLIC_URL: ${LIVEKIT_PUBLIC_URL:-ws://localhost:7880}
       DATABASE_URL: postgresql://${POSTGRES_USER:-livekit}:${POSTGRES_PASSWORD:-changeme_local_dev_only}@postgres:5432/livekit_conference
       REDIS_URL: redis://redis:6379
       S3_ENDPOINT: ${S3_ENDPOINT:-http://localstack:4566}
@@ -163,26 +164,6 @@ services:
     networks:
       - livekit-network
     restart: unless-stopped
-
-  # Frontend - Run locally instead of Docker
-  # To run: cd livekit-meet-frontend && pnpm dev
-  # Uncomment below if you want to run frontend in Docker
-  # frontend:
-  #   build:
-  #     context: ./livekit-meet-frontend
-  #     dockerfile: Dockerfile.dev
-  #   container_name: livekit-frontend
-  #   ports:
-  #     - "3000:3000"
-  #   environment:
-  #     NEXT_PUBLIC_BACKEND_URL: ${NEXT_PUBLIC_BACKEND_URL:-http://localhost:3001}
-  #     NEXT_PUBLIC_LIVEKIT_URL: ${NEXT_PUBLIC_LIVEKIT_URL:-ws://localhost:7880}
-  #   depends_on:
-  #     backend:
-  #       condition: service_healthy
-  #   networks:
-  #     - livekit-network
-  #   restart: unless-stopped
 
 volumes:
   postgres-data:

@@ -1,8 +1,16 @@
 api_key: devkey
-api_secret: secret
+api_secret: dev-secret-key-at-least-32-chars-long-for-security
 ws_url: ws://livekit:7880
 health_port: 9090
-log_level: info
+log_level: debug
+
+# Template base URL - used by Chrome to connect to LiveKit
+# For local dev, use the Docker internal hostname
+template_base: http://livekit:7880
+
+# Redis configuration (required for Egress)
+redis:
+  address: redis:6379
 
 # S3 configuration for recording uploads
 s3:
