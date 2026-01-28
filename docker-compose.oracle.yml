@@ -1,12 +1,14 @@
+version: "3.8"
+
 services:
   # PostgreSQL Database
   postgres:
     image: postgres:15-alpine
-    container_name: livekit-postgres
+    container_name: livekit-postgres-prod
     environment:
       POSTGRES_DB: livekit_conference
       POSTGRES_USER: ${POSTGRES_USER:-livekit}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme_local_dev_only}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./livekit-backend-api/migrations:/migrations
@@ -29,7 +31,7 @@ services:
   # Redis Cache
   redis:
     image: redis:7-alpine
-    container_name: livekit-redis
+    container_name: livekit-redis-prod
     command: redis-server --appendonly yes
     volumes:
       - redis-data:/data
@@ -45,35 +47,13 @@ services:
       - livekit-network
     restart: unless-stopped
 
-  # LocalStack for S3-compatible storage
-  localstack:
-    image: localstack/localstack:latest
-    container_name: livekit-localstack
-    environment:
-      SERVICES: s3
-      PERSISTENCE: 1
-    volumes:
-      - localstack-data:/var/lib/localstack
-      - ./localstack-init.sh:/etc/localstack/init/ready.d/init.sh
-    ports:
-      - "4566:4566"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 15s
-    networks:
-      - livekit-network
-    restart: unless-stopped
-
   # LiveKit Server
   livekit:
     image: livekit/livekit-server:latest
-    container_name: livekit-server
+    container_name: livekit-server-prod
     command: --config /etc/livekit.yaml --node-ip livekit
     volumes:
-      - ./livekit.yaml:/etc/livekit.yaml
+      - ./livekit.oracle.yaml:/etc/livekit.yaml
     ports:
       - "7880:7880"
       - "7881:7881"
@@ -94,26 +74,23 @@ services:
   # LiveKit Egress for recording
   egress:
     image: livekit/egress:latest
-    container_name: livekit-egress
+    container_name: livekit-egress-prod
     environment:
       EGRESS_CONFIG_FILE: /etc/egress.yaml
       LIVEKIT_API_KEY: ${LIVEKIT_API_KEY}
       LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET}
       LIVEKIT_URL: ${LIVEKIT_URL:-ws://livekit:7880}
-      # Temporarily disable S3 for local testing
-      # S3_ENDPOINT: ${S3_ENDPOINT:-http://localstack:4566}
-      # S3_ACCESS_KEY: ${S3_ACCESS_KEY:-test}
-      # S3_SECRET_KEY: ${S3_SECRET_KEY:-test}
-      # S3_REGION: ${S3_REGION:-us-east-1}
-      # S3_BUCKET: ${S3_BUCKET:-livekit-recordings}
+      # Oracle Cloud Object Storage (S3-compatible)
+      S3_ENDPOINT: ${S3_ENDPOINT}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      S3_REGION: ${S3_REGION:-us-ashburn-1}
+      S3_BUCKET: ${S3_BUCKET:-livekit-recordings}
     volumes:
-      - ./egress.local.yaml:/etc/egress.yaml
-      - ./recordings:/recordings # Mount local recordings directory
+      - ./egress.oracle.yaml:/etc/egress.yaml
     depends_on:
       livekit:
         condition: service_healthy
-      # localstack:
-      #   condition: service_healthy  # Temporarily disable LocalStack dependency
     cap_add:
       - SYS_ADMIN
     networks:
@@ -125,31 +102,29 @@ services:
     build:
       context: ./livekit-backend-api
       dockerfile: Dockerfile
-    container_name: livekit-backend
+    container_name: livekit-backend-prod
     ports:
       - "3001:3001"
     environment:
       PORT: 3001
-      NODE_ENV: ${NODE_ENV:-development}
+      NODE_ENV: ${NODE_ENV:-production}
       LIVEKIT_API_KEY: ${LIVEKIT_API_KEY}
       LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET}
       LIVEKIT_URL: ${LIVEKIT_URL:-ws://livekit:7880}
-      LIVEKIT_PUBLIC_URL: ${LIVEKIT_PUBLIC_URL:-ws://localhost:7880}
-      DATABASE_URL: postgresql://${POSTGRES_USER:-livekit}:${POSTGRES_PASSWORD:-changeme_local_dev_only}@postgres:5432/livekit_conference
-      REDIS_URL: redis://redis:6379
-      S3_ENDPOINT: ${S3_ENDPOINT:-http://localstack:4566}
-      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-test}
-      S3_SECRET_KEY: ${S3_SECRET_KEY:-test}
+      LIVEKIT_PUBLIC_URL: ${LIVEKIT_PUBLIC_URL}
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      # Oracle Cloud Object Storage
+      S3_ENDPOINT: ${S3_ENDPOINT}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
       S3_BUCKET: ${S3_BUCKET:-livekit-recordings}
-      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_REGION: ${S3_REGION:-us-ashburn-1}
       S3_FORCE_PATH_STYLE: ${S3_FORCE_PATH_STYLE:-true}
-      AWS_REGION: ${S3_REGION:-us-east-1}
-      # Enable local recordings for testing
-      USE_LOCAL_RECORDINGS: ${USE_LOCAL_RECORDINGS:-true}
+      AWS_REGION: ${AWS_REGION:-us-ashburn-1}
     volumes:
       - ./livekit-backend-api/src:/app/src
       - ./livekit-backend-api/migrations:/app/migrations
-      - ./recordings:/app/recordings # Mount recordings directory
     depends_on:
       postgres:
         condition: service_healthy
@@ -157,8 +132,6 @@ services:
         condition: service_healthy
       livekit:
         condition: service_healthy
-      # localstack:
-      #   condition: service_healthy  # Temporarily disable LocalStack dependency
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:3001/health"]
       interval: 10s
@@ -169,35 +142,30 @@ services:
       - livekit-network
     restart: unless-stopped
 
-  # Frontend - Run locally instead of Docker
-  # To run: cd livekit-meet-frontend && pnpm dev
-  # Uncomment below if you want to run frontend in Docker
-  # frontend:
-  #   build:
-  #     context: ./livekit-meet-frontend
-  #     dockerfile: Dockerfile.dev
-  #   container_name: livekit-frontend
-  #   ports:
-  #     - "3000:3000"
-  #   environment:
-  #     NEXT_PUBLIC_BACKEND_URL: ${NEXT_PUBLIC_BACKEND_URL:-http://localhost:3001}
-  #     NEXT_PUBLIC_LIVEKIT_URL: ${NEXT_PUBLIC_LIVEKIT_URL:-ws://localhost:7880}
-  #   depends_on:
-  #     backend:
-  #       condition: service_healthy
-  #   networks:
-  #     - livekit-network
-  #   restart: unless-stopped
+  # Nginx Reverse Proxy with SSL
+  nginx:
+    image: nginx:alpine
+    container_name: livekit-nginx-prod
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.oracle.conf:/etc/nginx/nginx.conf
+      - ./ssl:/etc/nginx/ssl
+    depends_on:
+      - backend
+      - livekit
+    networks:
+      - livekit-network
+    restart: unless-stopped
 
 volumes:
   postgres-data:
-    name: livekit-postgres-data
+    name: livekit-postgres-data-prod
   redis-data:
-    name: livekit-redis-data
-  localstack-data:
-    name: livekit-localstack-data
+    name: livekit-redis-data-prod
 
 networks:
   livekit-network:
-    name: livekit-network
+    name: livekit-network-prod
     driver: bridge

@@ -1,0 +1,71 @@
+# GitHub Actions CI/CD Pipeline for Oracle Cloud
+name: Deploy to Oracle Cloud
+
+on:
+  push:
+    branches: [main, production]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "18"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: |
+          cd livekit-backend-api
+          npm install
+
+      - name: Run tests
+        run: |
+          cd livekit-backend-api
+          npm test
+
+      - name: Build Docker image
+        run: |
+          cd livekit-backend-api
+          docker build -t livekit-backend:test .
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Deploy to Oracle Cloud
+        uses: appleboy/ssh-action@v0.1.5
+        with:
+          host: ${{ secrets.ORACLE_CLOUD_HOST }}
+          username: ${{ secrets.ORACLE_CLOUD_USER }}
+          key: ${{ secrets.ORACLE_CLOUD_SSH_KEY }}
+          script: |
+            cd /home/ubuntu/livekit-app
+            git pull origin main
+
+            # Backup current deployment
+            docker-compose down
+
+            # Rebuild and deploy
+            docker-compose --env-file .env.oracle build
+            docker-compose --env-file .env.oracle up -d
+
+            # Health check
+            sleep 30
+            curl -f http://localhost:3001/health || exit 1
+
+            echo "✅ Deployment successful!"
+
+# Secrets needed in GitHub:
+# ORACLE_CLOUD_HOST: Your Oracle Cloud server IP
+# ORACLE_CLOUD_USER: SSH username (usually 'ubuntu')
+# ORACLE_CLOUD_SSH_KEY: Your private SSH key

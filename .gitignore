@@ -51,6 +51,14 @@ bash.exe.stackdump
 *.pem
 *.key
 !*.example
+.env.backup*
+.env.livekit-cloud
+
+# Test files
+test-rec.json
+
+# Windows temp files
+nul
 
 # Test coverage
 coverage/

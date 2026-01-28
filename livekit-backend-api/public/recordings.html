@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LiveKit Recordings</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #f5f5f5;
+      }
+      h1 {
+        color: #333;
+      }
+      .search-box {
+        margin: 20px 0;
+      }
+      input[type="text"] {
+        padding: 10px;
+        width: 300px;
+        font-size: 16px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+      }
+      button {
+        padding: 10px 20px;
+        font-size: 16px;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        margin-left: 10px;
+      }
+      button:hover {
+        background-color: #0056b3;
+      }
+      .recordings-list {
+        margin-top: 30px;
+      }
+      .recording-item {
+        background: white;
+        padding: 15px;
+        margin: 10px 0;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      .recording-item h3 {
+        margin: 0 0 10px 0;
+        color: #007bff;
+      }
+      .recording-info {
+        color: #666;
+        font-size: 14px;
+        margin: 5px 0;
+      }
+      .recording-link {
+        display: inline-block;
+        margin-top: 10px;
+        padding: 8px 16px;
+        background-color: #28a745;
+        color: white;
+        text-decoration: none;
+        border-radius: 4px;
+      }
+      .recording-link:hover {
+        background-color: #218838;
+      }
+      .error {
+        color: #dc3545;
+        padding: 10px;
+        background-color: #f8d7da;
+        border-radius: 4px;
+        margin: 10px 0;
+      }
+      .loading {
+        text-align: center;
+        padding: 20px;
+        color: #666;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>LiveKit Recordings</h1>
+
+    <div class="search-box">
+      <input type="text" id="roomName" placeholder="Enter room name" />
+      <button onclick="loadRecordings()">Load Recordings</button>
+      <button onclick="listAllBuckets()">List All Files</button>
+    </div>
+
+    <div id="result"></div>
+
+    <script>
+      async function loadRecordings() {
+        const roomName = document.getElementById("roomName").value.trim();
+        if (!roomName) {
+          alert("Please enter a room name");
+          return;
+        }
+
+        const resultDiv = document.getElementById("result");
+        resultDiv.innerHTML =
+          '<div class="loading">Loading recordings...</div>';
+
+        try {
+          const response = await fetch(`/recordings/${roomName}`);
+          const data = await response.json();
+
+          if (data.error) {
+            resultDiv.innerHTML = `<div class="error">Error: ${data.error}</div>`;
+            return;
+          }
+
+          if (data.recordings.length === 0) {
+            resultDiv.innerHTML = `<div class="recordings-list"><p>No recordings found for room: ${roomName}</p></div>`;
+            return;
+          }
+
+          let html = `<div class="recordings-list"><h2>Found ${data.count} recording(s) for room: ${roomName}</h2>`;
+
+          data.recordings.forEach((recording, index) => {
+            const date = new Date(recording.lastModified).toLocaleString();
+            const sizeMB = (recording.size / (1024 * 1024)).toFixed(2);
+
+            html += `
+                        <div class="recording-item">
+                            <h3>Recording ${index + 1}</h3>
+                            <div class="recording-info"><strong>Filename:</strong> ${recording.filename}</div>
+                            <div class="recording-info"><strong>Size:</strong> ${sizeMB} MB</div>
+                            <div class="recording-info"><strong>Date:</strong> ${date}</div>
+                            <div class="recording-info"><strong>Key:</strong> ${recording.key}</div>
+                            <a href="${recording.url}" class="recording-link" target="_blank">Download/View Recording</a>
+                        </div>
+                    `;
+          });
+
+          html += "</div>";
+          resultDiv.innerHTML = html;
+        } catch (error) {
+          resultDiv.innerHTML = `<div class="error">Error loading recordings: ${error.message}</div>`;
+        }
+      }
+
+      async function listAllBuckets() {
+        const resultDiv = document.getElementById("result");
+        resultDiv.innerHTML =
+          '<div class="loading">Listing all files in bucket...</div>';
+
+        try {
+          const response = await fetch("/recordings/all-rooms");
+          const data = await response.json();
+
+          if (data.error) {
+            resultDiv.innerHTML = `<div class="error">Error: ${data.error}</div>`;
+            return;
+          }
+
+          if (data.recordings.length === 0) {
+            resultDiv.innerHTML = `<div class="recordings-list"><p>No recordings found in the bucket</p></div>`;
+            return;
+          }
+
+          let html = `<div class="recordings-list"><h2>All Recordings (${data.count} total)</h2>`;
+
+          data.recordings.forEach((recording, index) => {
+            const date = new Date(recording.lastModified).toLocaleString();
+            const sizeMB = (recording.size / (1024 * 1024)).toFixed(2);
+
+            html += `
+                        <div class="recording-item">
+                            <h3>Recording ${index + 1}</h3>
+                            <div class="recording-info"><strong>Filename:</strong> ${recording.filename}</div>
+                            <div class="recording-info"><strong>Size:</strong> ${sizeMB} MB</div>
+                            <div class="recording-info"><strong>Date:</strong> ${date}</div>
+                            <div class="recording-info"><strong>Key:</strong> ${recording.key}</div>
+                            <a href="${recording.url}" class="recording-link" target="_blank">Download/View Recording</a>
+                        </div>
+                    `;
+          });
+
+          html += "</div>";
+          resultDiv.innerHTML = html;
+        } catch (error) {
+          resultDiv.innerHTML = `<div class="error">Error listing files: ${error.message}</div>`;
+        }
+      }
+
+      // Allow Enter key to trigger search
+      document
+        .getElementById("roomName")
+        .addEventListener("keypress", function (e) {
+          if (e.key === "Enter") {
+            loadRecordings();
+          }
+        });
+    </script>
+  </body>
+</html>

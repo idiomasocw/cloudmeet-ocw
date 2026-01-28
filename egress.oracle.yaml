@@ -1,0 +1,36 @@
+# LiveKit Egress Configuration for Oracle Cloud
+log_level: info
+
+redis:
+  address: redis:6379
+
+# API credentials (same as LiveKit server)
+api_key: devkey
+api_secret: devsecret
+ws_url: ws://livekit:7880
+
+# Oracle Cloud Object Storage (S3-compatible)
+s3:
+  access_key: "" # Set via environment variable
+  secret: "" # Set via environment variable
+  region: us-ashburn-1
+  bucket: livekit-recordings
+  endpoint: "" # Set via environment variable
+  force_path_style: true
+
+# Recording templates
+template_base: /opt/egress/templates
+
+# CPU and memory limits for recording
+cpu_cost:
+  room_composite_cpu: 3.0
+  web_cpu: 3.0
+  participant_cpu: 2.0
+
+# File output settings
+file_output:
+  disable_manifest: false
+# Webhook for recording status (optional)
+# webhook:
+#   urls:
+#     - "https://your-domain.com/webhook/recording"

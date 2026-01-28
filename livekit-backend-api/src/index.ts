@@ -28,10 +28,17 @@ app.use(
 );
 app.use(express.json());
 app.use(cookieParser());
+app.use(express.static("public"));
 
 // AWS clients
 const s3Client = new S3Client({
   region: process.env.AWS_REGION || "us-east-1",
+  endpoint: process.env.S3_ENDPOINT,
+  forcePathStyle: process.env.S3_FORCE_PATH_STYLE === "true",
+  credentials: {
+    accessKeyId: process.env.S3_ACCESS_KEY || "test",
+    secretAccessKey: process.env.S3_SECRET_KEY || "test",
+  },
 });
 const secretsClient = new SecretsManagerClient({
   region: process.env.AWS_REGION || "us-east-1",
@@ -149,6 +156,82 @@ async function setupRoutes() {
   app.post("/stop-recording", recordingHandlers.stopRecording);
 
   app.get("/list-recordings", recordingHandlers.listRecordings);
+
+  // Endpoint to list all recordings in the bucket (must come before :roomName route)
+  app.get("/recordings/all-rooms", async (req, res) => {
+    try {
+      const s3Bucket = process.env.S3_BUCKET || "livekit-recordings";
+      const s3Endpoint = process.env.S3_ENDPOINT || "http://localstack:4566";
+      const isLocalStack = s3Endpoint.includes("localstack");
+
+      const { ListObjectsV2Command } = await import("@aws-sdk/client-s3");
+      const command = new ListObjectsV2Command({
+        Bucket: s3Bucket,
+        Prefix: "recordings/",
+      });
+
+      const response = await s3Client.send(command);
+      const recordings =
+        response.Contents?.map((obj) => {
+          // For LocalStack, use the endpoint URL
+          const url = isLocalStack
+            ? `http://localhost:4566/${s3Bucket}/${obj.Key}`
+            : `https://${s3Bucket}.s3.${process.env.AWS_REGION || "us-east-1"}.amazonaws.com/${obj.Key}`;
+
+          return {
+            key: obj.Key,
+            size: obj.Size,
+            lastModified: obj.LastModified,
+            url: url,
+            filename: obj.Key?.split("/").pop() || "unknown",
+          };
+        }) || [];
+
+      res.json({ recordings, count: recordings.length });
+    } catch (error) {
+      console.error("Error listing all recordings:", error);
+      res.status(500).json({ error: "Failed to list all recordings" });
+    }
+  });
+
+  // New endpoint to get recording URLs with presigned URLs for LocalStack
+  app.get("/recordings/:roomName", async (req, res) => {
+    const { roomName } = req.params;
+
+    try {
+      const s3Bucket = process.env.S3_BUCKET || "livekit-recordings";
+      const s3Endpoint = process.env.S3_ENDPOINT || "http://localstack:4566";
+      const isLocalStack = s3Endpoint.includes("localstack");
+
+      const { ListObjectsV2Command } = await import("@aws-sdk/client-s3");
+      const command = new ListObjectsV2Command({
+        Bucket: s3Bucket,
+        Prefix: `recordings/${roomName}/`,
+      });
+
+      const response = await s3Client.send(command);
+      const recordings =
+        response.Contents?.map((obj) => {
+          // For LocalStack, use the endpoint URL
+          const url = isLocalStack
+            ? `http://localhost:4566/${s3Bucket}/${obj.Key}`
+            : `https://${s3Bucket}.s3.${process.env.AWS_REGION || "us-east-1"}.amazonaws.com/${obj.Key}`;
+
+          return {
+            key: obj.Key,
+            size: obj.Size,
+            lastModified: obj.LastModified,
+            url: url,
+            filename: obj.Key?.split("/").pop() || "unknown",
+          };
+        }) || [];
+
+      res.json({ recordings, roomName, count: recordings.length });
+    } catch (error) {
+      console.error("Error listing recordings:", error);
+      res.status(500).json({ error: "Failed to list recordings" });
+    }
+  });
 }
 
 // Initialize and start server
