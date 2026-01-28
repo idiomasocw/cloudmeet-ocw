@@ -17,13 +17,13 @@ redis:
 
 # Logging
 log_level: info
-log_file: /tmp/livekit.log
+
 
 # Room settings
 room:
   auto_create: true
   max_participants: 100
-  empty_timeout: 300s
+  empty_timeout: 300
 
 # Turn server (optional, for better connectivity)
 turn:
