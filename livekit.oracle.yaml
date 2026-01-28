@@ -13,10 +13,7 @@ rtc:
 redis:
   address: redis:6379
 
-# You'll generate these keys after first run
-keys:
-  # Replace with your actual keys
-  # Keys are configured via LIVEKIT_KEYS environment variable in docker-compose
+
 
 # Logging
 log_level: info
@@ -31,7 +28,7 @@ room:
 # Turn server (optional, for better connectivity)
 turn:
   enabled: true
-  domain: your-domain.com
+  domain: live-lesson.onecultureworld.com
   tls_port: 5349
   udp_port: 3478
   external_tls: true
