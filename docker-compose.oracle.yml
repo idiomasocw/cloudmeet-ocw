@@ -59,8 +59,7 @@ services:
       - "7881:7881"
       - "50000-50100:50000-50100/udp"
     environment:
-      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY}
-      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET}
+      LIVEKIT_KEYS: "${LIVEKIT_API_KEY}: ${LIVEKIT_API_SECRET}"
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:7880"]
       interval: 10s

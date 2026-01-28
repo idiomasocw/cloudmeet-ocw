@@ -16,7 +16,7 @@ redis:
 # You'll generate these keys after first run
 keys:
   # Replace with your actual keys
-  devkey: devsecret
+  # Keys are configured via LIVEKIT_KEYS environment variable in docker-compose
 
 # Logging
 log_level: info
