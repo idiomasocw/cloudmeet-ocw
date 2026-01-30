@@ -20,6 +20,8 @@ app.use(
     origin: [
       "https://cloumeet.intellectif.com",
       "https://main.d7su4zfgbh6z8.amplifyapp.com",
+      "https://main.dym1w452yvsba.amplifyapp.com",
+      "https://learn.onecultureworld.com",
       "http://localhost:3000",
       "http://localhost:3001",
     ],
