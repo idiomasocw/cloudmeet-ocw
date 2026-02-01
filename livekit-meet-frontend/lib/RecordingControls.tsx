@@ -12,7 +12,18 @@ export function RecordingControls() {
 
     setIsLoading(true);
     try {
-      const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || '';
+      let baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || '';
+      if (!baseUrl && process.env.NEXT_PUBLIC_CONN_DETAILS_ENDPOINT) {
+        try {
+          // If conn details is a full URL, use its origin (e.g. https://backend.com)
+          // If it's a relative path, this will throw/fail safely
+          const urlObj = new URL(process.env.NEXT_PUBLIC_CONN_DETAILS_ENDPOINT);
+          baseUrl = urlObj.origin;
+        } catch (e) {
+          // ignore invalid URL
+          console.warn('Could not parse NEXT_PUBLIC_CONN_DETAILS_ENDPOINT as URL');
+        }
+      }
       const endpoint = isRecording ? '/record/stop' : '/record/start';
       const url = `${baseUrl}${endpoint}?roomName=${room.name}`;
 
