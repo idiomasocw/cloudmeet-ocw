@@ -23,9 +23,9 @@ template_base: /opt/egress/templates
 
 # CPU and memory limits for recording
 cpu_cost:
-  room_composite_cpu: 3.0
-  web_cpu: 3.0
-  participant_cpu: 2.0
+  room_composite_cpu: 0.5
+  web_cpu: 0.5
+  participant_cpu: 0.5
 
 # File output settings
 file_output:
