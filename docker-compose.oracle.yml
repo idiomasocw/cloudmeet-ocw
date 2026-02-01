@@ -53,7 +53,7 @@ services:
     container_name: livekit-server-prod
     command: --config /etc/livekit.yaml --node-ip livekit
     volumes:
-      - ./livekit.oracle.yaml:/etc/livekit.yaml
+      - ./livekit.oracle.yaml:/etc/livekit.yaml:z
     ports:
       - "7880:7880"
       - "7881:7881"
