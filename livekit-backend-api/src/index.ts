@@ -92,6 +92,14 @@ async function initializeServices() {
       wsUrl: process.env.LIVEKIT_URL || "",
     };
 
+    // Debug: Trace credential injection
+    console.log("DEBUG: Initializing LiveKitService with config:", {
+      apiKeyExists: !!livekitConfig.apiKey,
+      apiKeyLength: livekitConfig.apiKey?.length,
+      apiSecretExists: !!livekitConfig.apiSecret,
+      wsUrl: livekitConfig.wsUrl
+    });
+
     // Initialize LiveKit service
     livekitService = new LiveKitService(livekitConfig);
 
