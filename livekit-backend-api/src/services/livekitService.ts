@@ -153,7 +153,7 @@ export class LiveKitService {
         },
         {
           layout: "grid",
-          customBaseUrl: "https://recorder.livekit.io",
+          // customBaseUrl: "https://recorder.livekit.io",
         },
       );
       console.log("✅ startRoomCompositeEgress SUCCESS!");
