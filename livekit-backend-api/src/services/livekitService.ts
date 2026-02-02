@@ -19,7 +19,7 @@ export interface TokenOptions {
 }
 
 export class LiveKitService {
-  constructor(private config: LiveKitConfig) {}
+  constructor(private config: LiveKitConfig) { }
 
   async generateToken(
     roomName: string,
@@ -153,6 +153,7 @@ export class LiveKitService {
         },
         {
           layout: "grid",
+          customBaseUrl: "https://recorder.livekit.io",
         },
       );
       console.log("✅ startRoomCompositeEgress SUCCESS!");
