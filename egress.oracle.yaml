@@ -1,5 +1,5 @@
 # LiveKit Egress Configuration for Oracle Cloud
-log_level: info
+log_level: debug
 
 redis:
   address: redis:6379
