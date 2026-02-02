@@ -9,11 +9,11 @@ redis:
 
 # Oracle Cloud Object Storage (S3-compatible)
 s3:
-  access_key: "" # Set via environment variable
-  secret: "" # Set via environment variable
-  region: us-ashburn-1
-  bucket: livekit-recordings
-  endpoint: "" # Set via environment variable
+  access_key: ""
+  secret: ""
+  region: ""
+  bucket: ""
+  endpoint: ""
   force_path_style: true
 
 # Recording templates
