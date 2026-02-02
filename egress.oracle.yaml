@@ -4,10 +4,6 @@ log_level: info
 redis:
   address: redis:6379
 
-# API credentials (same as LiveKit server)
-api_key: devkey
-api_secret: devsecret
-ws_url: ws://livekit:7880
 
 # Oracle Cloud Object Storage (S3-compatible)
 s3:
