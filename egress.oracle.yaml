@@ -4,6 +4,11 @@ log_level: info
 redis:
   address: redis:6379
 
+# API credentials
+api_key: ${EGRESS_API_KEY}
+api_secret: ${EGRESS_API_SECRET}
+ws_url: ${EGRESS_WS_URL}
+
 
 # Oracle Cloud Object Storage (S3-compatible)
 s3:
