@@ -53,9 +53,12 @@ export class LiveKitService {
     console.log("S3 Bucket:", s3Bucket);
     console.log("AWS Region:", awsRegion);
 
-    const httpUrl = this.config.wsUrl
-      .replace("wss://", "https://")
-      .replace("ws://", "http://");
+    // For self-hosted, we need to ensure we're using the correct API endpoint
+    // If wss:// is used, we need https:// for the API
+    const httpUrl = this.config.wsUrl.startsWith("http")
+      ? this.config.wsUrl
+      : this.config.wsUrl.replace("wss://", "https://").replace("ws://", "http://");
+
     console.log("EgressClient URL conversion:", {
       original: this.config.wsUrl,
       converted: httpUrl,
