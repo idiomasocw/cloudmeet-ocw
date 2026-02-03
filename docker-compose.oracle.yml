@@ -78,6 +78,8 @@ services:
       EGRESS_CONFIG_FILE: /etc/egress.yaml
       EGRESS_API_KEY: ${LIVEKIT_API_KEY}
       EGRESS_API_SECRET: ${LIVEKIT_API_SECRET}
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET}
       EGRESS_WS_URL: ${LIVEKIT_PUBLIC_URL}
       # Oracle Cloud Object Storage (S3-compatible)
       EGRESS_S3_ENDPOINT: ${S3_ENDPOINT}
