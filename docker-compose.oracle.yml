@@ -74,6 +74,9 @@ services:
   egress:
     image: livekit/egress:latest
     container_name: livekit-egress-prod
+    shm_size: 2g
+    cap_add:
+      - SYS_ADMIN
     environment:
       EGRESS_CONFIG_FILE: /etc/egress.yaml
       EGRESS_API_KEY: ${LIVEKIT_API_KEY}
