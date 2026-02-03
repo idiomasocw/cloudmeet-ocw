@@ -82,6 +82,7 @@ services:
       LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET}
       EGRESS_WS_URL: ${LIVEKIT_PUBLIC_URL}
       WS_URL: ${LIVEKIT_PUBLIC_URL}
+      LIVEKIT_URL: ${LIVEKIT_PUBLIC_URL}
       WS_URL: ${LIVEKIT_PUBLIC_URL}
       # Oracle Cloud Object Storage (S3-compatible)
       EGRESS_S3_ENDPOINT: ${S3_ENDPOINT}
