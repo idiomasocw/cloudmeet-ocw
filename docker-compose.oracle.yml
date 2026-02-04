@@ -98,8 +98,6 @@ services:
         condition: service_healthy
     cap_add:
       - SYS_ADMIN
-    networks:
-      - livekit-network
     restart: unless-stopped
 
   # Backend API
