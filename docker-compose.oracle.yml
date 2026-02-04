@@ -149,17 +149,13 @@ services:
   nginx:
     image: nginx:alpine
     container_name: livekit-nginx-prod
-    ports:
-      - "80:80"
-      - "443:443"
     volumes:
       - ./nginx.oracle.conf:/etc/nginx/nginx.conf
       - ./ssl:/etc/nginx/ssl
     depends_on:
       - backend
       - livekit
-    networks:
-      - livekit-network
+    network_mode: "host"
     restart: unless-stopped
 
 volumes:
