@@ -54,10 +54,9 @@ services:
     command: --config /etc/livekit.yaml --node-ip livekit
     volumes:
       - ./livekit.oracle.yaml:/etc/livekit.yaml:z
-    ports:
-      - "7880:7880"
-      - "7881:7881"
-      - "50000-50100:50000-50100/udp"
+    volumes:
+      - ./livekit.oracle.yaml:/etc/livekit.yaml:z
+    network_mode: "host"
     environment:
       LIVEKIT_KEYS: "${LIVEKIT_API_KEY}: ${LIVEKIT_API_SECRET}"
     healthcheck:
@@ -66,8 +65,6 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
-    networks:
-      - livekit-network
     restart: unless-stopped
 
   # LiveKit Egress for recording
@@ -77,6 +74,7 @@ services:
     shm_size: 2g
     cap_add:
       - SYS_ADMIN
+    network_mode: "host"
     environment:
       EGRESS_CONFIG_FILE: /etc/egress.yaml
       EGRESS_API_KEY: ${LIVEKIT_API_KEY}
